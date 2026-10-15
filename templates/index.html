@@ -1,0 +1,148 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MiniGPT Chatbot</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #202123;
+    }
+    header {
+      background: #202123;
+      color: white;
+      padding: 18px;
+      text-align: center;
+    }
+    main {
+      max-width: 750px;
+      margin: 20px auto;
+      padding: 0 12px;
+    }
+    #chat {
+      height: 65vh;
+      min-height: 300px;
+      overflow-y: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 10px #0001;
+    }
+    .message {
+      padding: 12px 15px;
+      border-radius: 12px;
+      margin: 10px 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+    .user { background: #dbeafe; margin-left: 12%; }
+    .bot { background: #f0f0f0; margin-right: 12%; }
+    form { display: flex; gap: 8px; margin-top: 12px; }
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 10px;
+      background: #10a37f;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    #status { color: #666; font-size: 13px; padding: 8px 2px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>MiniGPT</h2>
+    <p>Your personal AI assistant</p>
+  </header>
+
+  <main>
+    <div id="chat" aria-live="polite">
+      <div class="message bot">
+        Hi! I'm MiniGPT. Ask me anything!
+      </div>
+    </div>
+
+    <div id="status">Ready to chat</div>
+
+    <form id="form">
+      <input id="input" placeholder="Type your message..."
+             autocomplete="off" maxlength="4000" required>
+      <button id="send" type="submit">Send</button>
+    </form>
+  </main>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const send = document.getElementById("send");
+    const status = document.getElementById("status");
+
+    const messages = [];
+
+    function addMessage(text, role) {
+      const div = document.createElement("div");
+      div.className = "message " + role;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const text = input.value.trim();
+      if (!text || send.disabled) return;
+
+      messages.push({ role: "user", content: text });
+      addMessage(text, "user");
+      input.value = "";
+      send.disabled = true;
+      status.textContent = "MiniGPT is thinking...";
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.reply || "Request failed");
+
+        const reply = data.reply || "No response received.";
+        messages.push({ role: "assistant", content: reply });
+        addMessage(reply, "bot");
+        status.textContent = "Ready to chat";
+      } catch (error) {
+        messages.pop();
+        addMessage(
+          "I couldn't connect to the AI. Check your API key and server.",
+          "bot"
+        );
+        status.textContent = "Connection failed";
+      } finally {
+        send.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
